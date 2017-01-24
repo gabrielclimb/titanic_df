@@ -1,0 +1,277 @@
+
+# coding: utf-8
+
+# DataBase - Titanic
+
+# In[81]:
+
+#importando os módulos de trabalho
+get_ipython().magic('matplotlib inline')
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+
+# In[82]:
+
+#importando base de dados
+url = 'https://storage.googleapis.com/supplemental_media/udacityu/5420148578/titanic_data.csv'
+titanic_df = pd.read_csv(url, na_values=['NAN'])
+#Tirando a Coluna PassengerId, pois não precisaremos dela
+titanic_df = titanic_df.drop('PassengerId', 1)
+
+
+# In[83]:
+
+#Quantas pessoas há nesse banco de dados?
+np.max(titanic_df.count())
+
+
+# In[84]:
+
+#Quais variáveis possuem valores nulos?
+titanic_df.count()/len(titanic_df)
+
+
+# Podemos ver que a variavel Ages, Cabin e Embarked possuem valores nulos, porém primeiro iremos remover Ages, que é a primeira váriavel que faremos a análise. Não faremos análise da váriavel Cabin pois somente 22% do nosso banco de dados possui essa informação, o que é estatisticamente baixa e assim não gerará dados confiáveis para interpretações.
+
+# In[85]:
+
+#Removendo os passageiros que estão com idade nula.
+titanic_df = titanic_df.dropna(subset = ['Age'])
+
+
+# In[86]:
+
+#Quantas pessoas há nesse banco de dados, após removermos os passageiros com idade nula?
+np.max(titanic_df.count())
+
+
+# Havia 2223 passageiros no navio (http://veja.abril.com.br/historia/titanic/tragedia-naufragio-iceberg-mortos-causas-investigacao.shtml).
+
+# Sem remover os valores nulos na coluna Age, tinhamos 891 pessoas, após remove-las nosso banco de dados ficou com 714 Considerando o espaço amostral inicial, que era de 40% do total de passageiros do Titanic, tivemos uma redução de 8% na relevancia da amostra, o que não é significativo para a análise. Por isso podemos remover as pessoas que não tiveram suas idades preenchidas.
+
+# Pergunta: Existe alguma relação entre as pessoas que sobreviveram ou é arbitraria?
+
+# In[87]:
+
+#número de sobreviventes
+np.sum(titanic_df['Survived'])
+
+
+# In[88]:
+
+#Removendo os passageiros que estão com idade nula.
+titanic_df = titanic_df.dropna(subset = ['Embarked'])
+
+
+# In[89]:
+
+#Sexo dos passageiros
+sobreviventes_sexo = pd.crosstab(index=titanic_df['Survived'],
+                                 columns=titanic_df['Sex'],
+                                margins=True)
+columns = ['Mulher','Homem','Total Coluna']
+sobreviventes_sexo.index = ['Mortos','Sobreviventes','Total Linha']
+sobreviventes_sexo
+
+
+# In[90]:
+
+#fraçao dos sobreviventes por sexo
+sobreviventes_sexo.iloc[1]/sobreviventes_sexo.iloc[1,2]
+
+
+# Nas tabelas acima temos que 38,4% (342/891) das pessoas do nossa dataset sobreviveram, e que entre esses sobreviventes, a maioria foram mulhereres, com 68% entre o total de sobreviventes, e 75% entre todas as mulhere do dataser. O que é interessante notar é que 64% dos passageiros eram homens, entretanto somente 32% dos sobreviventes foram homens. Se separamos por sexo temos que somente 19% dos homens conseguiram se salvar contra 74% das mulheres
+# Por que as mulheres conseguiram se salvar mais que os homens?
+# 
+
+# In[91]:
+
+sexo_classe = pd.crosstab(index=titanic_df["Sex"], columns=[titanic_df["Pclass"],titanic_df["Survived"]], margins = True)
+sexo_classe.index = ['Mulheres','Homens', 'Total Linha']
+sexo_classe#['Survived'].plot.bar()
+
+
+# In[92]:
+
+#Passegeiros divididos por sexo e por classe.
+#Grafico de sobreviventes por sexo e por Classe
+
+agrupar_classe_sexo = sns.factorplot(x="Sex", y="Survived", col="Pclass",
+                   data=titanic_df, saturation=.5,
+                   kind="bar", ci=None, aspect=.6)
+
+(agrupar_classe_sexo.set_axis_labels("", "Taxa de Sobrevivência")
+ .set_xticklabels(["Homens", "Mulheres"])
+ .set_titles("{col_name} {col_var}")
+ .set(ylim=(0, 1))
+ .despine(left=True)) 
+
+
+
+
+# Quando separamos por classes vemos algo muito curioso, quase 100% das mulheres da 1 e da 2 Classe sobreviveram, contra 50% das mulheres da 3 Classe, e continuamos a ver uma taxa muito baixa de homens sobreviventes. No filme as mulheres e crianças tem prioridade no embarque. Será por isso? Por que as mulheres da 3 Classe tiveram uma taxa de sobrevivencia tão baixa em relação a 1 e a 2 Classe?
+
+# In[93]:
+
+#Idade dos sobreviventes
+separar_idade = pd.cut(titanic_df['Age'], np.arange(0, 90, 5))
+agrupar_idade = titanic_df.groupby(separar_idade).mean()
+agrupar_idade['Survived'].plot.bar(title = 'Idade dos sobreviventes').set_ylabel("Frequência", fontsize=12)
+
+
+# Pelo gráfico vemos que a maior chance de sobrevivencia é até 5 anos e depois de 10 a 15 anos, o que confirma a ideia de mulheres e crianças terem prioridades nos botes salva-vidas. Vemos que a um pico no gráfico no range 75 a 80, isso por que havia somente uma pessoa com 80 anos na amostra e ela conseguiu se salvar.
+
+# In[94]:
+
+(titanic_df.groupby(['Pclass']).mean())['Survived'].plot.bar( title = u'Chance de sobrevivência por classe').set_ylabel("Frequência", fontsize=12)
+
+
+# Vemos que as chances de sobrevivência depende muito da classe, por isso as mulheres da primeira classe tem uma taxa tão alta. Podemos ver isso no filme, quando os funcionarios do navio trancam os passageiros da 3 classe para que sobre botes para os passageiros da 1 e da 2 Classe.
+
+# Existe alguma relação entre o porto que embarcaram e a sobrevivencia dos passageiros?
+
+# In[95]:
+
+#Removendo os passageiros que estão sem informaçao de onde embarcaram. 
+titanic_df = titanic_df.dropna(subset = ['Embarked'])
+
+
+# In[96]:
+
+#Quantas pessoas ficaram após a remoção?
+np.max(titanic_df.count())
+
+
+# Então, somente 2 pessoas foram removidas, o que dá 0.28%, o que não mudara nada nas nossas análises.
+
+# In[97]:
+
+#Existe Alguma Relação com o porto que embarcaram?
+# Quantas pessoas embarcaram em cada porto?
+n_porto = pd.crosstab(index=titanic_df['Embarked'],columns=titanic_df['Survived'],margins=True)
+n_porto
+
+
+# In[98]:
+
+#Frequencia dos sobreviventes que embarcaram em cada porto
+n_porto[1] / n_porto.iloc[3,1]
+
+
+# In[99]:
+
+p = sns.violinplot(data = titanic_df, x = 'Embarked', y = 'Age',order=["S","C","Q"])
+p.set(title = u'Distribuição da idade por Porto de Embarque', 
+      xlabel = 'Porto', 
+      ylabel = 'Idade',
+      ylim = 0,
+      xticklabels = ['Southampton','Cherbourg', 'Queenstown']);
+
+
+# A distribuição de idade nos 3 portos é bem similar, como podemos ver no gráfico acima
+
+# In[100]:
+
+#Sobrevivente separados pelo porto e pela classe
+(titanic_df.groupby(['Embarked','Pclass']).count())['Survived'].plot.bar(title ="Sobreviventes x (Porto e Classe)").set_ylabel("Número de Sobreviventes", fontsize=12)
+
+
+# In[101]:
+
+#Frequencia dos sobreviventes separados pelo porto e pela classe
+titanic_df.groupby(['Embarked',
+                    'Pclass'])["Survived"].mean().unstack(level=1).plot.bar(
+    title = u'% Sobreviventes x (Porto e Classe)').set_ylabel(u"Frequência", fontsize=12)
+
+
+# 'Southampton', 'Cherbourg', 'Queenstown'
+# A maioria dos sobreviventes embarcaram em Southampton, o que faz sentido, pois foi o porto que embarcou mais pessoas, e o porto que mais embarcaram pessoas da 1 classe, entretrando quando avaliamos a chance de sobrevivencia das pessoas de cada porto, vemos que todos os passageiros que embarcaram em Cherbourg tiveram uma taxa de sobrevivencia maior que a dos outros portos com as respectivas classes. Outro fato curioso é que  no porto de Queenstown a 2 classe teve uma taxa de sobrevivencia igual à primeira classe. Por que será?
+
+# In[102]:
+
+#Frequencia dos sobreviventes separados pelo porto e pela classe
+
+titanic_df.groupby(['Embarked','Pclass',
+                    'Sex'])["Survived"].mean().unstack(level=0).plot.bar(
+    title = 'Frequencia de sobreviventes dividido por classe, porto e sexo').set_ylabel("Frequência", fontsize=12)
+
+
+# In[103]:
+
+pd.crosstab(index=titanic_df["Sex"], columns=[titanic_df["Pclass"],titanic_df["Embarked"]], margins = True)
+
+
+# Aqui está a resposta da pergunta anterior. Das pessoas que embarcaram em Queenstown, quase todas as mulheres da 1 e da segunda classe sobreviveram, e o porque disso está na quantidade. Em Queenstown, na 1 classe embarcou um casal e na 2 classe também só um casal. Por isso temos 100% para mulheres, e 0% para os homens.
+
+# In[104]:
+
+#Será que existe alguma relação entre ter parentes abordo ou não?
+#usando a coluna SibSP - Siblings on board, e a  Parch - Parent or children 
+#pode-se determinar if o passageiro embarcou sozinho ou com algum parente
+titanic_df['Sozinho ou com Família'] = titanic_df.SibSp + titanic_df.Parch
+titanic_df['Sozinho ou com Família'].loc[titanic_df['Sozinho ou com Família'] > 0] = 'Com Família'
+titanic_df['Sozinho ou com Família'].loc[titanic_df['Sozinho ou com Família'] == 0] = 'Sozinho'
+
+
+# In[105]:
+
+pd.crosstab(index=titanic_df[u'Sozinho ou com Família'],columns=titanic_df['Survived'],margins=True)
+
+
+# In[106]:
+
+#Gráfico do total de passageiros com Familia e Sozinhos
+sns.factorplot(u'Sozinho ou com Família', data=titanic_df, kind='count')
+
+
+# Vemos no gráfico acima que a maioria das pessoas viajam sozinhas (56%)
+
+# In[107]:
+
+f_classe= sns.factorplot(x="Sozinho ou com Família", y="Survived",
+                   data=titanic_df, saturation=.5,
+                   kind="bar", ci=None, aspect=.9)
+
+(f_classe.set_axis_labels("", "Taxa de Sobrevivência")
+ .set_xticklabels(["Com Família", "Sozinhos"])
+ .set_titles("{col_name} {col_var}")
+ .set(ylim=(0, 0.6))
+ .despine(left=True)) 
+
+
+# Mas embora a maioria viajasse sozinha, as pessoas com algum familiar tiveram uma taxa de sobrevivenvia maior, o que pode ser interpretado como ajuda entre os parentes para que as pessoas da família pudessem se salvar.
+
+# In[108]:
+
+f_classe= sns.factorplot(x=u"Sozinho ou com Família", y="Survived", col="Pclass",
+                   data=titanic_df, saturation=.5,
+                   kind="bar", ci=None, aspect=.6)
+
+(f_classe.set_axis_labels("", u"Taxa de Sobrevivência")
+ .set_xticklabels([u"Com Família", "Sozinhos"])
+ .set_titles("{col_name} {col_var}")
+ .set(ylim=(0, 1))
+ .despine(left=True)) 
+
+
+# Novamente vemos o reflexo disso nas classes, obviamente, a 1 classe teve um taxa maior no total, porém o padrão se manteve nas 3 classes, corraborando para a hipótese de ajuda entre os familiares
+
+# - Limitações 
+# 
+#     Como todas as nossas observações foram feitas em cima do conjunto de dados obtidos no Kaggler, há muitas lacunas para que possamos entender o todos do problema e obter uma melhor compreensao da catastrofe e os fatores que colaboraram para a sobrevivência das pessoas. É importante ressaltar que talvez hajam outros fatores que não estavam presentes nesse dataset e, portanto, não foram analisados, por exemplo, a qualidade da comida de cada classe ou a saude prévia de cada pessoas.
+# 
+# 
+# - Conclusões
+# 
+#     Vimos que a maioria dos sobreviventes foram mulheres e crianças, o que corresponde com a regra 'Mulheres e Crianças primeiro' para terem preferencia nos botes salva-vidas. Outra coisa que nota-se na análise é a influencia da classe ocupada para a sobrevivencia, e mais importante notar a correlação disso com a nossa realidade atual em terra firme. Pois embora a chance dos homens sobreviverem eram menores que a das mulheres, há uma diferença consideravel entre homens da primeira classe e da terceira classe.
+#     
+#     Passageiros viajando sozinhos em relação aos que viajavam com a família pode ser um fator que poderia afetar a sobrevivência por muitas razões diferentes, pode ser que uma pessoa não desejasse deixar um ente querido para trás ou que  membros da mesma família se ajudaram, assim saindo de situações que sozinho seria mais difícil. Em primeiro lugar, vemos a partir do gráfico "Distribuição de Passageiros (Sozinho x Com Família)",  que a maioria das pessoas viajava sozinha, mas as pessoas que viajavam com a família ainda era uma grande quantidade (>40%).
+#     Entrando, quando nos aprofundamos na análise da sobrevivência, vemos que os passageiros que estavam sozinhos, emboram fossem 50% do total, tiveram uma taxa de sobrevivência de 30% apenas, mostrando que viajar com a familia elevou, e muito, as chances de sobrivivencia das pessoas
+#     
+# - Futuros Trabalhos?
+# 
+#     Se houvesse mais informações sobre a variavel Cabin poderia se estimar as localizações com maiores indices de sobrevivencia e correlacionar isso com o sexo e idade, assim construindo um modelo mais preciso para a sobrevivencia dos passageiros. No campo sobre os parentes, pessoas que viajavam com familiares como primos, tios, sobrinhos e sogros foram declaradas como sem parentes o que pode deturpar a análise, isso é algo para trabalhos futuros tentarem descobrir.
+# 
